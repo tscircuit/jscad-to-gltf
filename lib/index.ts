@@ -122,7 +122,10 @@ const parseHexColor = (value: string): ColorTuple | undefined => {
 const parseRgbColor = (value: string): ColorTuple | undefined => {
   const match = value.match(/^rgba?\(([^)]+)\)$/i)
   if (!match) return undefined
-  const parts = match[1]
+  const partsSource = match[1]
+  if (!partsSource) return undefined
+
+  const parts = partsSource
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean)
@@ -178,11 +181,12 @@ const extractVertexColor = (vertex: any, defaultColor: ColorTuple): ColorTuple =
 
 const applyTransform = (vector: Vec3, matrix?: number[]): Vec3 => {
   if (!Array.isArray(matrix) || matrix.length !== 16) return vector
+  const m = matrix as number[]
   const [x, y, z] = vector
-  const nx = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12]
-  const ny = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13]
-  const nz = matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14]
-  const w = matrix[3] * x + matrix[7] * y + matrix[11] * z + matrix[15]
+  const nx = m[0]! * x + m[4]! * y + m[8]! * z + m[12]!
+  const ny = m[1]! * x + m[5]! * y + m[9]! * z + m[13]!
+  const nz = m[2]! * x + m[6]! * y + m[10]! * z + m[14]!
+  const w = m[3]! * x + m[7]! * y + m[11]! * z + m[15]!
   if (w && w !== 1) {
     return [nx / w, ny / w, nz / w]
   }
@@ -222,9 +226,9 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
     const vertexColors = polygon.vertices.map((vertex: any) => extractVertexColor(vertex, defaultColor))
 
     for (let i = 1; i < transformedVertices.length - 1; i++) {
-      const a = transformedVertices[0]
-      const b = transformedVertices[i]
-      const c = transformedVertices[i + 1]
+      const a = transformedVertices[0]!
+      const b = transformedVertices[i]!
+      const c = transformedVertices[i + 1]!
 
       const ab = subtract(b, a)
       const ac = subtract(c, a)
@@ -233,9 +237,9 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
       positions.push(...a, ...b, ...c)
       normals.push(...normal, ...normal, ...normal)
 
-      const colorA = vertexColors[0]
-      const colorB = vertexColors[i]
-      const colorC = vertexColors[i + 1]
+      const colorA = vertexColors[0]!
+      const colorB = vertexColors[i]!
+      const colorC = vertexColors[i + 1]!
       colors.push(...colorA, ...colorB, ...colorC)
     }
   }
@@ -333,15 +337,22 @@ const computeMinMax = (values: Float32Array): { min: number[]; max: number[] } =
   const max = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY]
 
   for (let i = 0; i < values.length; i += 3) {
-    const x = values[i]
-    const y = values[i + 1]
-    const z = values[i + 2]
-    if (x < min[0]) min[0] = x
-    if (y < min[1]) min[1] = y
-    if (z < min[2]) min[2] = z
-    if (x > max[0]) max[0] = x
-    if (y > max[1]) max[1] = y
-    if (z > max[2]) max[2] = z
+    const x = values[i]!
+    const y = values[i + 1]!
+    const z = values[i + 2]!
+    const minX = min[0]!
+    const minY = min[1]!
+    const minZ = min[2]!
+    if (x < minX) min[0] = x
+    if (y < minY) min[1] = y
+    if (z < minZ) min[2] = z
+
+    const maxX = max[0]!
+    const maxY = max[1]!
+    const maxZ = max[2]!
+    if (x > maxX) max[0] = x
+    if (y > maxY) max[1] = y
+    if (z > maxZ) max[2] = z
   }
 
   return { min, max }
