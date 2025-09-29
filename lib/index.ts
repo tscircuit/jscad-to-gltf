@@ -66,6 +66,7 @@ const GLTF_MODE_TRIANGLES = 4
 const GLTF_MODE_LINES = 1
 const GLTF_COMPONENT_FLOAT = 5126
 const GLTF_COMPONENT_UINT32 = 5125
+const GLTF_COMPONENT_UNSIGNED_BYTE = 5121
 const GLTF_TYPE_VEC3 = "VEC3"
 const GLTF_TYPE_SCALAR = "SCALAR"
 
@@ -79,7 +80,11 @@ const toColorTuple = (value: unknown, fallback: ColorTuple): ColorTuple => {
     const r = Number(value[0])
     const g = Number(value[1])
     const b = Number(value[2])
-    return [Number.isFinite(r) ? r : fallback[0], Number.isFinite(g) ? g : fallback[1], Number.isFinite(b) ? b : fallback[2]]
+    return [
+      Number.isFinite(r) ? r : fallback[0],
+      Number.isFinite(g) ? g : fallback[1],
+      Number.isFinite(b) ? b : fallback[2],
+    ]
   }
   return fallback
 }
@@ -106,7 +111,8 @@ const parseHexColor = (value: string): ColorTuple | undefined => {
   const isLong = hex.length === 6 || hex.length === 8
   if (!isShort && !isLong) return undefined
 
-  const expand = (component: string) => (isShort ? component + component : component)
+  const expand = (component: string) =>
+    isShort ? component + component : component
   const components = [0, 1, 2].map((index) => {
     const start = index * (isShort ? 1 : 2)
     const part = expand(hex.slice(start, start + (isShort ? 1 : 2)))
@@ -163,18 +169,33 @@ const parseColorValue = (value: unknown): ColorTuple | undefined => {
 const extractVertexPosition = (vertex: any): Vec3 => {
   if (!vertex) return [0, 0, 0]
   if (Array.isArray(vertex) && vertex.length >= 3) {
-    return [Number(vertex[0]) || 0, Number(vertex[1]) || 0, Number(vertex[2]) || 0]
+    return [
+      Number(vertex[0]) || 0,
+      Number(vertex[1]) || 0,
+      Number(vertex[2]) || 0,
+    ]
   }
   if (vertex.pos && Array.isArray(vertex.pos) && vertex.pos.length >= 3) {
-    return [Number(vertex.pos[0]) || 0, Number(vertex.pos[1]) || 0, Number(vertex.pos[2]) || 0]
+    return [
+      Number(vertex.pos[0]) || 0,
+      Number(vertex.pos[1]) || 0,
+      Number(vertex.pos[2]) || 0,
+    ]
   }
   if (Array.isArray(vertex.position) && vertex.position.length >= 3) {
-    return [Number(vertex.position[0]) || 0, Number(vertex.position[1]) || 0, Number(vertex.position[2]) || 0]
+    return [
+      Number(vertex.position[0]) || 0,
+      Number(vertex.position[1]) || 0,
+      Number(vertex.position[2]) || 0,
+    ]
   }
   return [0, 0, 0]
 }
 
-const extractVertexColor = (vertex: any, defaultColor: ColorTuple): ColorTuple => {
+const extractVertexColor = (
+  vertex: any,
+  defaultColor: ColorTuple,
+): ColorTuple => {
   if (vertex?.color) return toColorTuple(vertex.color, defaultColor)
   return defaultColor
 }
@@ -193,7 +214,11 @@ const applyTransform = (vector: Vec3, matrix?: number[]): Vec3 => {
   return [nx, ny, nz]
 }
 
-const subtract = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+const subtract = (a: Vec3, b: Vec3): Vec3 => [
+  a[0] - b[0],
+  a[1] - b[1],
+  a[2] - b[2],
+]
 const cross = (a: Vec3, b: Vec3): Vec3 => [
   a[1] * b[2] - a[2] * b[1],
   a[2] * b[0] - a[0] * b[2],
@@ -213,7 +238,9 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
   const positions: number[] = []
   const normals: number[] = []
   const colors: number[] = []
-  const defaultColor: ColorTuple = csg.color ? toColorTuple(csg.color, [1, 1, 1]) : [1, 1, 1]
+  const defaultColor: ColorTuple = csg.color
+    ? toColorTuple(csg.color, [1, 1, 1])
+    : [1, 1, 1]
 
   for (const polygon of csg.polygons) {
     if (!polygon?.vertices || polygon.vertices.length < 3) continue
@@ -223,7 +250,9 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
       return applyTransform(position, csg.transforms)
     })
 
-    const vertexColors = polygon.vertices.map((vertex: any) => extractVertexColor(vertex, defaultColor))
+    const vertexColors = polygon.vertices.map((vertex: any) =>
+      extractVertexColor(vertex, defaultColor),
+    )
 
     for (let i = 1; i < transformedVertices.length - 1; i++) {
       const a = transformedVertices[0]!
@@ -264,7 +293,9 @@ const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
 
   const positions: number[] = []
   const colors: number[] = []
-  const defaultColor: ColorTuple = csg.color ? toColorTuple(csg.color, [1, 1, 1]) : [1, 1, 1]
+  const defaultColor: ColorTuple = csg.color
+    ? toColorTuple(csg.color, [1, 1, 1])
+    : [1, 1, 1]
 
   for (const side of csg.sides) {
     if (!Array.isArray(side) || side.length < 2) continue
@@ -272,7 +303,11 @@ const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
     const endRaw = side[side.length - 1]
 
     const start = applyTransform(
-      [Number(startRaw[0]) || 0, Number(startRaw[1]) || 0, Number(startRaw[2]) || 0],
+      [
+        Number(startRaw[0]) || 0,
+        Number(startRaw[1]) || 0,
+        Number(startRaw[2]) || 0,
+      ],
       csg.transforms,
     )
     const end = applyTransform(
@@ -296,9 +331,14 @@ const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
   }
 }
 
-const collectGeometries = (csg: CsgLike | CsgLike[], name: string): GeometryData[] => {
+const collectGeometries = (
+  csg: CsgLike | CsgLike[],
+  name: string,
+): GeometryData[] => {
   if (Array.isArray(csg)) {
-    return csg.flatMap((child, index) => collectGeometries(child, `${name}_${index}`))
+    return csg.flatMap((child, index) =>
+      collectGeometries(child, `${name}_${index}`),
+    )
   }
 
   if (csg?.polygons) {
@@ -328,13 +368,31 @@ const addBufferView = (
   }
   const arrayBuffer = Buffer.from(data.buffer, data.byteOffset, data.byteLength)
   chunks.push(arrayBuffer)
-  bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: data.byteLength, target })
-  return { bufferViewIndex: bufferViews.length - 1, newLength: offset + data.byteLength }
+  bufferViews.push({
+    buffer: 0,
+    byteOffset: offset,
+    byteLength: data.byteLength,
+    target,
+  })
+  return {
+    bufferViewIndex: bufferViews.length - 1,
+    newLength: offset + data.byteLength,
+  }
 }
 
-const computeMinMax = (values: Float32Array): { min: number[]; max: number[] } => {
-  const min = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]
-  const max = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY]
+const computeMinMax = (
+  values: Float32Array,
+): { min: number[]; max: number[] } => {
+  const min = [
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+  ]
+  const max = [
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ]
 
   for (let i = 0; i < values.length; i += 3) {
     const x = values[i]!
@@ -364,6 +422,7 @@ const buildGltfCore = (geometries: GeometryData[]) => {
   const accessors: Accessor[] = []
   const meshes: Array<{ name: string; primitives: any[] }> = []
   const nodes: Array<{ name: string; mesh: number }> = []
+  const materials: any[] = []
   let bufferLength = 0
 
   geometries.forEach((geometry, index) => {
@@ -409,10 +468,18 @@ const buildGltfCore = (geometries: GeometryData[]) => {
     }
 
     if (geometry.colors) {
+      // Encode vertex colors as normalized UNSIGNED_BYTE VEC3 for better viewer compatibility
+      const floatColors = geometry.colors
+      const colorData = new Uint8Array(floatColors.length)
+      for (let i = 0; i < floatColors.length; i++) {
+        const v = floatColors[i]!
+        const clamped = Math.min(1, Math.max(0, v))
+        colorData[i] = Math.round(clamped * 255)
+      }
       const colorResult = addBufferView(
         bufferChunks,
         bufferViews,
-        geometry.colors,
+        colorData,
         bufferLength,
         34962,
       )
@@ -420,12 +487,28 @@ const buildGltfCore = (geometries: GeometryData[]) => {
       const colorAccessorIndex = accessors.length
       accessors.push({
         bufferView: colorResult.bufferViewIndex,
-        componentType: GLTF_COMPONENT_FLOAT,
-        count: geometry.colors.length / 3,
+        componentType: GLTF_COMPONENT_UNSIGNED_BYTE,
+        count: colorData.length / 3,
         type: GLTF_TYPE_VEC3,
+        normalized: true,
       })
       primitiveAttributes["COLOR_0"] = colorAccessorIndex
     }
+
+    const baseColorFactor: [number, number, number, number] =
+      geometry.colors && geometry.colors.length >= 3
+        ? [geometry.colors[0]!, geometry.colors[1]!, geometry.colors[2]!, 1]
+        : [1, 1, 1, 1]
+    const materialIndex =
+      materials.push({
+        name: `Material_${geometry.name}`,
+        pbrMetallicRoughness: {
+          baseColorFactor,
+          metallicFactor: 0,
+          roughnessFactor: 1,
+        },
+        doubleSided: true,
+      }) - 1
 
     meshes.push({
       name: geometry.name,
@@ -433,6 +516,7 @@ const buildGltfCore = (geometries: GeometryData[]) => {
         {
           attributes: primitiveAttributes,
           mode: geometry.mode,
+          material: materialIndex,
         },
       ],
     })
@@ -457,6 +541,7 @@ const buildGltfCore = (geometries: GeometryData[]) => {
     bufferViews,
     accessors,
     meshes,
+    materials,
     nodes: nodes.map((node, idx) => ({ ...node, mesh: idx })),
     scenes: [{ name: "Scene", nodes: nodes.map((_, idx) => idx) }],
     scene: 0,
@@ -469,10 +554,14 @@ const buildGlb = (json: Record<string, any>, binary: Buffer): ArrayBuffer => {
   const jsonString = JSON.stringify(json)
   const jsonBuffer = Buffer.from(jsonString, "utf8")
   const jsonPadding = align(jsonBuffer.length, 4) - jsonBuffer.length
-  const paddedJson = jsonPadding > 0 ? Buffer.concat([jsonBuffer, Buffer.alloc(jsonPadding, 0x20)]) : jsonBuffer
+  const paddedJson =
+    jsonPadding > 0
+      ? Buffer.concat([jsonBuffer, Buffer.alloc(jsonPadding, 0x20)])
+      : jsonBuffer
 
   const binPadding = align(binary.length, 4) - binary.length
-  const paddedBinary = binPadding > 0 ? Buffer.concat([binary, Buffer.alloc(binPadding)]) : binary
+  const paddedBinary =
+    binPadding > 0 ? Buffer.concat([binary, Buffer.alloc(binPadding)]) : binary
 
   const header = Buffer.alloc(12)
   header.writeUInt32LE(0x46546c67, 0) // 'glTF'
@@ -496,7 +585,10 @@ const buildGlb = (json: Record<string, any>, binary: Buffer): ArrayBuffer => {
     paddedBinary,
   ])
 
-  return glbBuffer.buffer.slice(glbBuffer.byteOffset, glbBuffer.byteOffset + glbBuffer.byteLength)
+  return glbBuffer.buffer.slice(
+    glbBuffer.byteOffset,
+    glbBuffer.byteOffset + glbBuffer.byteLength,
+  )
 }
 
 const buildConversionResult = (
@@ -534,8 +626,9 @@ const buildConversionResult = (
 }
 
 const ensureColorTupleOnCsg = (geom: CsgLike, colorHint?: unknown): CsgLike => {
-  const parsedColor = parseColorValue(colorHint)
-    ?? parseColorValue((geom as { color?: unknown }).color)
+  const parsedColor =
+    parseColorValue(colorHint) ??
+    parseColorValue((geom as { color?: unknown }).color)
   if (parsedColor) {
     return { ...geom, color: parsedColor }
   }
@@ -558,7 +651,9 @@ export const convertJscadPlanToGltf = async (
 ): Promise<ConvertJscadPlanToGltfResult> => {
   const meshName = options.meshName ?? "JSCADMesh"
 
-  const csgResult = executeJscadOperations(jscad as any, plan) as CsgLike | CsgLike[]
+  const csgResult = executeJscadOperations(jscad as any, plan) as
+    | CsgLike
+    | CsgLike[]
 
   if (!csgResult) {
     throw new Error("JSCAD plan execution returned no geometry")
