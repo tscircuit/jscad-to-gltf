@@ -1,10 +1,14 @@
 {
   "name": "jscad-to-gltf",
-  "module": "index.ts",
+  "main": "dist/index.js",
   "version": "0.0.1",
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tscircuit/jscad-to-gltf"
+  },
   "scripts": {
     "build": "tsup-node ./lib/index.ts --dts --format esm",
     "format": "biome format --write .",
