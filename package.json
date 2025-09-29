@@ -3,7 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "dependencies": {
+    "@jscad/modeling": "^2.12.6",
+    "jscad-planner": "^0.0.13"
+  },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
     "@types/bun": "latest"
   },
   "peerDependencies": {
