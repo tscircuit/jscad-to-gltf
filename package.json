@@ -1,8 +1,16 @@
 {
-  "name": "jscad-plan-to-gltf",
+  "name": "jscad-to-gltf",
   "module": "index.ts",
+  "version": "0.0.1",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup-node ./lib/index.ts --dts --format esm",
+    "format": "biome format --write .",
+    "format:check": "biome format --check ."
+  },
   "type": "module",
-  "private": true,
   "dependencies": {
     "@jscad/modeling": "^2.12.6",
     "jscad-planner": "^0.0.13"
@@ -12,7 +20,8 @@
     "@types/bun": "latest",
     "jscad-electronics": "^0.0.42",
     "looks-same": "^10.0.1",
-    "poppygl": "^0.0.5"
+    "poppygl": "^0.0.5",
+    "tsup": "^8.5.0"
   },
   "peerDependencies": {
     "typescript": "^5"
