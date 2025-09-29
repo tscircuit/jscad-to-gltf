@@ -24,7 +24,7 @@ type Vec3 = [number, number, number]
 interface CsgLike {
   polygons?: Array<{ vertices: any[] }>
   sides?: any[]
-  color?: ColorTuple
+  color?: unknown
   transforms?: number[]
 }
 
@@ -34,6 +34,15 @@ interface GeometryData {
   normals?: Float32Array
   colors?: Float32Array
   mode: number
+}
+
+export interface JscadRenderedGeometry {
+  geom: CsgLike
+  color?: unknown
+}
+
+export interface JscadRenderedModel {
+  geometries: JscadRenderedGeometry[]
 }
 
 interface BufferView {
@@ -73,6 +82,79 @@ const toColorTuple = (value: unknown, fallback: ColorTuple): ColorTuple => {
     return [Number.isFinite(r) ? r : fallback[0], Number.isFinite(g) ? g : fallback[1], Number.isFinite(b) ? b : fallback[2]]
   }
   return fallback
+}
+
+const normalizeColorChannel = (value: number): number => {
+  if (!Number.isFinite(value)) return 0
+  if (value < 0) return 0
+  if (value > 1) return Math.min(value / 255, 1)
+  return value
+}
+
+const parseColorArray = (value: unknown): ColorTuple | undefined => {
+  if (!Array.isArray(value) || value.length < 3) return undefined
+  const r = normalizeColorChannel(Number(value[0]))
+  const g = normalizeColorChannel(Number(value[1]))
+  const b = normalizeColorChannel(Number(value[2]))
+  if ([r, g, b].some((channel) => !Number.isFinite(channel))) return undefined
+  return [r, g, b]
+}
+
+const parseHexColor = (value: string): ColorTuple | undefined => {
+  const hex = value.slice(1)
+  const isShort = hex.length === 3
+  const isLong = hex.length === 6 || hex.length === 8
+  if (!isShort && !isLong) return undefined
+
+  const expand = (component: string) => (isShort ? component + component : component)
+  const components = [0, 1, 2].map((index) => {
+    const start = index * (isShort ? 1 : 2)
+    const part = expand(hex.slice(start, start + (isShort ? 1 : 2)))
+    const parsed = parseInt(part, 16)
+    if (Number.isNaN(parsed)) return undefined
+    return normalizeColorChannel(parsed)
+  })
+
+  if (components.some((channel) => channel === undefined)) return undefined
+  return components as ColorTuple
+}
+
+const parseRgbColor = (value: string): ColorTuple | undefined => {
+  const match = value.match(/^rgba?\(([^)]+)\)$/i)
+  if (!match) return undefined
+  const parts = match[1]
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+  if (parts.length < 3) return undefined
+
+  const toChannel = (part: string): number | undefined => {
+    if (part.endsWith("%")) {
+      const percent = Number(part.slice(0, -1))
+      if (!Number.isFinite(percent)) return undefined
+      return Math.min(Math.max(percent / 100, 0), 1)
+    }
+    const numeric = Number(part)
+    if (!Number.isFinite(numeric)) return undefined
+    return normalizeColorChannel(numeric)
+  }
+
+  const channels = parts.slice(0, 3).map(toChannel)
+  if (channels.some((channel) => channel === undefined)) return undefined
+  return channels as ColorTuple
+}
+
+const parseColorValue = (value: unknown): ColorTuple | undefined => {
+  if (value == null) return undefined
+  const fromArray = parseColorArray(value)
+  if (fromArray) return fromArray
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+    if (trimmed.startsWith("#")) return parseHexColor(trimmed.toLowerCase())
+    return parseRgbColor(trimmed)
+  }
+  return undefined
 }
 
 const extractVertexPosition = (vertex: any): Vec3 => {
@@ -406,22 +488,12 @@ const buildGlb = (json: Record<string, any>, binary: Buffer): ArrayBuffer => {
   return glbBuffer.buffer.slice(glbBuffer.byteOffset, glbBuffer.byteOffset + glbBuffer.byteLength)
 }
 
-export const convertJscadPlanToGltf = async (
-  plan: JscadOperation,
-  options: ConvertJscadPlanToGltfOptions = {},
-): Promise<ConvertJscadPlanToGltfResult> => {
-  const format = options.format ?? "glb"
-  const meshName = options.meshName ?? "JSCADMesh"
-
-  const csgResult = executeJscadOperations(jscad as any, plan) as CsgLike | CsgLike[]
-
-  if (!csgResult) {
-    throw new Error("JSCAD plan execution returned no geometry")
-  }
-
-  const geometries = collectGeometries(csgResult, meshName)
-
-  if (geometries.length === 0) {
+const buildConversionResult = (
+  geometries: GeometryData[],
+  format: "glb" | "gltf",
+  prettyJson?: boolean,
+): ConvertJscadPlanToGltfResult => {
+  if (!geometries.length) {
     throw new Error("JSCAD plan execution returned no geometry")
   }
 
@@ -439,7 +511,7 @@ export const convertJscadPlanToGltf = async (
 
   const jsonDoc = JSON.parse(JSON.stringify(json))
   jsonDoc.buffers[0].uri = `data:application/octet-stream;base64,${binary.toString("base64")}`
-  const jsonString = JSON.stringify(jsonDoc, null, options.prettyJson ? 2 : 0)
+  const jsonString = JSON.stringify(jsonDoc, null, prettyJson ? 2 : 0)
   const byteLength = Buffer.byteLength(jsonString, "utf8")
 
   return {
@@ -448,6 +520,60 @@ export const convertJscadPlanToGltf = async (
     mimeType: "model/gltf+json",
     byteLength,
   }
+}
+
+const ensureColorTupleOnCsg = (geom: CsgLike, colorHint?: unknown): CsgLike => {
+  const parsedColor = parseColorValue(colorHint)
+    ?? parseColorValue((geom as { color?: unknown }).color)
+  if (parsedColor) {
+    return { ...geom, color: parsedColor }
+  }
+  return geom
+}
+
+const normalizeRenderedGeometries = (model: JscadRenderedModel): CsgLike[] => {
+  if (!model || !Array.isArray(model.geometries)) return []
+  const prepared: CsgLike[] = []
+  for (const entry of model.geometries) {
+    if (!entry?.geom) continue
+    prepared.push(ensureColorTupleOnCsg(entry.geom, entry.color))
+  }
+  return prepared
+}
+
+export const convertJscadPlanToGltf = async (
+  plan: JscadOperation,
+  options: ConvertJscadPlanToGltfOptions = {},
+): Promise<ConvertJscadPlanToGltfResult> => {
+  const meshName = options.meshName ?? "JSCADMesh"
+
+  const csgResult = executeJscadOperations(jscad as any, plan) as CsgLike | CsgLike[]
+
+  if (!csgResult) {
+    throw new Error("JSCAD plan execution returned no geometry")
+  }
+
+  const geometries = collectGeometries(csgResult, meshName)
+
+  const format = options.format ?? "glb"
+  return buildConversionResult(geometries, format, options.prettyJson)
+}
+
+export const convertJscadModelToGltf = async (
+  model: JscadRenderedModel,
+  options: ConvertJscadPlanToGltfOptions = {},
+): Promise<ConvertJscadPlanToGltfResult> => {
+  const meshName = options.meshName ?? "JSCADMesh"
+  const csgGeometries = normalizeRenderedGeometries(model)
+
+  if (csgGeometries.length === 0) {
+    throw new Error("JSCAD model did not contain any geometries")
+  }
+
+  const geometries = collectGeometries(csgGeometries, meshName)
+  const format = options.format ?? "glb"
+
+  return buildConversionResult(geometries, format, options.prettyJson)
 }
 
 export default convertJscadPlanToGltf

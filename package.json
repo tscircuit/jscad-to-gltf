@@ -10,7 +10,9 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
     "@types/bun": "latest",
-    "looks-same": "^10.0.1"
+    "jscad-electronics": "^0.0.42",
+    "looks-same": "^10.0.1",
+    "poppygl": "^0.0.5"
   },
   "peerDependencies": {
     "typescript": "^5"
