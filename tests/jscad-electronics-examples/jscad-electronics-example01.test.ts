@@ -1,11 +1,14 @@
 import { test, expect } from "bun:test"
 import { getJscadModelForFootprint } from "jscad-electronics/vanilla"
 import { renderGLTFToPNGBufferFromGLBBuffer } from "poppygl"
+import * as jscadModeling from "@jscad/modeling"
+
 
 import { convertJscadModelToGltf } from "../../lib/index"
 
 test("jscad-electronics-example01", async () => {
-  const model = await getJscadModelForFootprint("soic8")
+  const model = getJscadModelForFootprint("soic8", jscadModeling as any)
+  
   const glbResult = await convertJscadModelToGltf(model, {
     meshName: "soic8",
   })
