@@ -22,7 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
     "@types/bun": "latest",
-    "jscad-electronics": "^0.0.43",
+    "jscad-electronics": "^0.0.44",
     "looks-same": "^10.0.1",
     "poppygl": "^0.0.7",
     "tsup": "^8.5.0"
