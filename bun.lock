@@ -12,7 +12,7 @@
         "@types/bun": "latest",
         "jscad-electronics": "^0.0.42",
         "looks-same": "^10.0.1",
-        "poppygl": "^0.0.5",
+        "poppygl": "^0.0.7",
         "tsup": "^8.5.0",
       },
       "peerDependencies": {
@@ -299,7 +299,7 @@
 
     "pngjs": ["pngjs@7.0.0", "", {}, "sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow=="],
 
-    "poppygl": ["poppygl@0.0.5", "", { "dependencies": { "gl-matrix": "^3.4.4", "pureimage": "^0.4.18", "readable-stream": "^4.7.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-Wq1u+SIAVOCKGRhfod8t7qOu7ryaP9+OwmDdKNArF7NDQTRJ6MsMeLH2OoNpoMtCOcr6AKEtkiDZgL7IrUcQsw=="],
+    "poppygl": ["poppygl@0.0.7", "", { "dependencies": { "gl-matrix": "^3.4.4", "pureimage": "^0.4.18", "readable-stream": "^4.7.0" }, "peerDependencies": { "typescript": "^5" } }, "sha512-XpFkLEEDgKP2OSmo1kl7ywczmtQx+7tsjbbw8KDxviIuBvqTrLkkkkE6jGE2UdFvDqehyYlNVCYoFf6hO3WsMw=="],
 
     "postcss-load-config": ["postcss-load-config@6.0.1", "", { "dependencies": { "lilconfig": "^3.1.1" }, "peerDependencies": { "jiti": ">=1.21.0", "postcss": ">=8.0.9", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["jiti", "postcss", "tsx", "yaml"] }, "sha512-oPtTM4oerL+UXmx+93ytZVN82RrlY/wPUV8IeDxFrzIjXOLF1pN+EmKPLbubvKHT2HC20xXsCAH2Z+CKV6Oz/g=="],
 

@@ -234,7 +234,8 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
       const ac = subtract(c, a)
       const normal = normalize(cross(ab, ac))
 
-      positions.push(...a, ...b, ...c)
+      // Swap b and c to correct winding order for glTF (counter-clockwise)
+      positions.push(...a, ...c, ...b)
       normals.push(...normal, ...normal, ...normal)
 
       const colorA = vertexColors[0]!
