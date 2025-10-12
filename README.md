@@ -29,6 +29,7 @@ const result = await convertJscadModelToGltf(model, {
   format: "glb", // or "gltf"
   meshName: "MyAssembly",
   prettyJson: false,
+  axisTransform: "jscad_y+ -> gltf_z+", // Makes objects lie flat
 })
 
 await Bun.write(`model.${result.format}`, result.data)
@@ -43,6 +44,7 @@ const result = await convertJscadPlanToGltf(plan, {
   format: "glb", // or "gltf"
   meshName: "MyAssembly",
   prettyJson: false,
+  axisTransform: "jscad_y+ -> gltf_z+", // Makes objects lie flat
 })
 
 await Bun.write(`model.${result.format}`, result.data)
@@ -56,6 +58,9 @@ await Bun.write(`model.${result.format}`, result.data)
 - `format`: output as binary `glb` (default) or JSON `gltf`.
 - `meshName`: base name used for generated meshes and nodes (`"JSCADMesh"` by default).
 - `prettyJson`: pretty-print the `.gltf` JSON for readability.
+- `axisTransform`: axis transformation to apply (default: `"none"`). Available options:
+  - `"none"`: No transformation (keeps original JSCAD orientation)
+  - `"jscad_y+ -> gltf_z+"`: Transforms JSCAD Y-up coordinate system to glTF Z-up (makes objects lie flat when viewed in glTF viewers)
 
 **Result**
 
