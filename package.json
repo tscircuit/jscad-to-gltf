@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsup-node ./lib/index.ts --dts --format esm",
     "format": "biome format --write .",
-    "format:check": "biome format --check ."
+    "format:check": "biome check ."
   },
   "type": "module",
   "dependencies": {
