@@ -5,10 +5,15 @@ import { Buffer } from "node:buffer"
 
 export type { JscadOperation }
 
+export type AxisTransform =
+  | "jscad_y+ -> gltf_z+" // Default JSCAD Y-up to glTF Z-up (lay flat)
+  | "none" // No transformation (keep original orientation)
+
 export interface ConvertJscadPlanToGltfOptions {
   format?: "glb" | "gltf"
   meshName?: string
   prettyJson?: boolean
+  axisTransform?: AxisTransform
 }
 
 export interface ConvertJscadPlanToGltfResult {
@@ -229,7 +234,29 @@ const normalize = (v: Vec3): Vec3 => {
   return [v[0] / length, v[1] / length, v[2] / length]
 }
 
-const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
+// Axis transformation matrices
+const AXIS_TRANSFORM_MATRICES: Record<AxisTransform, number[] | null> = {
+  "jscad_y+ -> gltf_z+": [
+    // Rotate +90° around X-axis: Y becomes -Z, Z becomes Y
+    1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1,
+  ],
+  none: null,
+}
+
+const applyAxisTransform = (
+  vector: Vec3,
+  axisTransform: AxisTransform,
+): Vec3 => {
+  const matrix = AXIS_TRANSFORM_MATRICES[axisTransform]
+  if (!matrix) return vector
+  return applyTransform(vector, matrix)
+}
+
+const convertPolygonGeometry = (
+  csg: CsgLike,
+  name: string,
+  axisTransform: AxisTransform = "none",
+): GeometryData => {
   if (!csg.polygons || csg.polygons.length === 0) {
     throw new Error("Expected polygon data in JSCAD geometry")
   }
@@ -246,7 +273,8 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
 
     const transformedVertices = polygon.vertices.map((vertex: any) => {
       const position = extractVertexPosition(vertex)
-      return applyTransform(position, csg.transforms)
+      const afterTransforms = applyTransform(position, csg.transforms)
+      return applyAxisTransform(afterTransforms, axisTransform)
     })
 
     const vertexColors = polygon.vertices.map((vertex: any) =>
@@ -285,7 +313,11 @@ const convertPolygonGeometry = (csg: CsgLike, name: string): GeometryData => {
   }
 }
 
-const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
+const convertSideGeometry = (
+  csg: CsgLike,
+  name: string,
+  axisTransform: AxisTransform = "none",
+): GeometryData => {
   if (!csg.sides || csg.sides.length === 0) {
     throw new Error("Expected side data in JSCAD 2D geometry")
   }
@@ -301,7 +333,7 @@ const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
     const startRaw = side[0]
     const endRaw = side[side.length - 1]
 
-    const start = applyTransform(
+    const startTransformed = applyTransform(
       [
         Number(startRaw[0]) || 0,
         Number(startRaw[1]) || 0,
@@ -309,10 +341,13 @@ const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
       ],
       csg.transforms,
     )
-    const end = applyTransform(
+    const start = applyAxisTransform(startTransformed, axisTransform)
+
+    const endTransformed = applyTransform(
       [Number(endRaw[0]) || 0, Number(endRaw[1]) || 0, Number(endRaw[2]) || 0],
       csg.transforms,
     )
+    const end = applyAxisTransform(endTransformed, axisTransform)
 
     positions.push(...start, ...end)
     colors.push(...defaultColor, ...defaultColor)
@@ -333,19 +368,20 @@ const convertSideGeometry = (csg: CsgLike, name: string): GeometryData => {
 const collectGeometries = (
   csg: CsgLike | CsgLike[],
   name: string,
+  axisTransform: AxisTransform = "none",
 ): GeometryData[] => {
   if (Array.isArray(csg)) {
     return csg.flatMap((child, index) =>
-      collectGeometries(child, `${name}_${index}`),
+      collectGeometries(child, `${name}_${index}`, axisTransform),
     )
   }
 
   if (csg?.polygons) {
-    return [convertPolygonGeometry(csg, name)]
+    return [convertPolygonGeometry(csg, name, axisTransform)]
   }
 
   if (csg?.sides) {
-    return [convertSideGeometry(csg, name)]
+    return [convertSideGeometry(csg, name, axisTransform)]
   }
 
   throw new Error(
@@ -622,6 +658,7 @@ export const convertJscadPlanToGltf = async (
   options: ConvertJscadPlanToGltfOptions = {},
 ): Promise<ConvertJscadPlanToGltfResult> => {
   const meshName = options.meshName ?? "JSCADMesh"
+  const axisTransform = options.axisTransform ?? "none"
 
   const csgResult = executeJscadOperations(jscad as any, plan) as
     | CsgLike
@@ -631,7 +668,7 @@ export const convertJscadPlanToGltf = async (
     throw new Error("JSCAD plan execution returned no geometry")
   }
 
-  const geometries = collectGeometries(csgResult, meshName)
+  const geometries = collectGeometries(csgResult, meshName, axisTransform)
 
   const format = options.format ?? "glb"
   return buildConversionResult(geometries, format, options.prettyJson)
@@ -642,13 +679,14 @@ export const convertJscadModelToGltf = async (
   options: ConvertJscadPlanToGltfOptions = {},
 ): Promise<ConvertJscadPlanToGltfResult> => {
   const meshName = options.meshName ?? "JSCADMesh"
+  const axisTransform = options.axisTransform ?? "none"
   const csgGeometries = normalizeRenderedGeometries(model)
 
   if (csgGeometries.length === 0) {
     throw new Error("JSCAD model did not contain any geometries")
   }
 
-  const geometries = collectGeometries(csgGeometries, meshName)
+  const geometries = collectGeometries(csgGeometries, meshName, axisTransform)
   const format = options.format ?? "glb"
 
   return buildConversionResult(geometries, format, options.prettyJson)
