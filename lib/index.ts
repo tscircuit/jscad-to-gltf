@@ -157,16 +157,51 @@ const parseRgbColor = (value: string): ColorTuple | undefined => {
   return channels as ColorTuple
 }
 
+const namedColors: Record<string, string> = {
+  red: "#ff0000",
+  green: "#008000",
+  blue: "#0000ff",
+  black: "#000000",
+  white: "#ffffff",
+  gray: "#808080",
+  grey: "#808080",
+  yellow: "#ffff00",
+  cyan: "#00ffff",
+  magenta: "#ff00ff",
+  orange: "#ffa500",
+  pink: "#ffc0cb",
+  purple: "#800080",
+  brown: "#a52a2a",
+}
+
 const parseColorValue = (value: unknown): ColorTuple | undefined => {
   if (value == null) return undefined
+
   const fromArray = parseColorArray(value)
   if (fromArray) return fromArray
+
   if (typeof value === "string") {
-    const trimmed = value.trim()
+    const trimmed = value.trim().toLowerCase()
     if (!trimmed) return undefined
-    if (trimmed.startsWith("#")) return parseHexColor(trimmed.toLowerCase())
+
+    // Named colors (e.g. "red")
+    const named = namedColors[trimmed]
+    if (named) return parseHexColor(named)
+
+    // Hex without "#" (e.g. "ff0000" → "#ff0000")
+    if (/^[0-9a-f]{3,8}$/i.test(trimmed)) {
+      return parseHexColor("#" + trimmed)
+    }
+
+    // Normal hex (e.g. "#ff0000")
+    if (trimmed.startsWith("#")) {
+      return parseHexColor(trimmed)
+    }
+
+    // rgb(), rgba(), etc.
     return parseRgbColor(trimmed)
   }
+
   return undefined
 }
 
