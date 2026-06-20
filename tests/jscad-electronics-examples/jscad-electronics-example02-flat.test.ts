@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
 import { getJscadModelForFootprint } from "jscad-electronics/vanilla"
-import { renderGLTFToPNGBufferFromGLBBuffer } from "poppygl"
+import { renderGLTFToPNGFromGLB } from "poppygl"
 import * as jscadModeling from "@jscad/modeling"
 
 import { convertJscadModelToGltf } from "../../lib/index"
@@ -33,6 +33,6 @@ test("jscad-electronics-example02-flat (with axis transformation)", async () => 
   expect(parsed.meshes?.[0]?.primitives?.[0]?.attributes?.COLOR_0).toBeDefined()
 
   expect(
-    renderGLTFToPNGBufferFromGLBBuffer(glbResult.data as ArrayBuffer),
+    renderGLTFToPNGFromGLB(glbResult.data as ArrayBuffer),
   ).toMatchPngSnapshot(import.meta.path)
 })
