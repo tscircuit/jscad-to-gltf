@@ -16,7 +16,8 @@ describe("hex string color support", () => {
     const parsed = JSON.parse(result.data as string)
     // COLOR_0 accessor must exist (geometry is visible)
     const colorAccessor = parsed.accessors?.find(
-      (a: any) => a.type === "VEC3" && a.bufferView !== parsed.accessors[0].bufferView,
+      (a: any) =>
+        a.type === "VEC3" && a.bufferView !== parsed.accessors[0].bufferView,
     )
     expect(parsed.meshes).toBeDefined()
     expect(parsed.meshes.length).toBeGreaterThan(0)
