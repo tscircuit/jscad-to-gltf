@@ -2,54 +2,91 @@ import { describe, expect, it } from "bun:test"
 import * as jscadModeling from "@jscad/modeling"
 import { convertJscadModelToGltf } from "../lib/index"
 
+function getColorFloats(parsed: any): Float32Array {
+  const primitive = parsed.meshes[0].primitives[0]
+  const colorAccessorIndex = primitive.attributes["COLOR_0"]
+  if (colorAccessorIndex === undefined) {
+    throw new Error("No color accessor found")
+  }
+  const colorAccessor = parsed.accessors[colorAccessorIndex]
+  const bufferView = parsed.bufferViews[colorAccessor.bufferView]
+  const uri = parsed.buffers[0].uri
+  const base64 = uri.split(",")[1]
+  const buffer = Buffer.from(base64, "base64")
+
+  return new Float32Array(
+    buffer.buffer,
+    buffer.byteOffset + bufferView.byteOffset,
+    bufferView.byteLength / 4,
+  )
+}
+
 describe("hex string color support", () => {
-  it("renders geometry with shorthand hex color (#fff) correctly — not as fallback white", async () => {
+  it("renders geometry with shorthand hex color (#fff) on vertex correctly", async () => {
     const geom = jscadModeling.primitives.cuboid({ size: [1, 1, 1] })
-    // Simulate what jscad-fiber Colorize does: sets geom.color = "#fff"
-    ;(geom as any).color = "#fff"
+    if (geom.polygons) {
+      for (const poly of geom.polygons) {
+        for (const vertex of poly.vertices) {
+          ;(vertex as any).color = "#fff"
+        }
+      }
+    }
 
     const result = await convertJscadModelToGltf(
-      { geometries: [{ geom, color: "#fff" }] },
+      { geometries: [{ geom }] },
       { format: "gltf" },
     )
 
     const parsed = JSON.parse(result.data as string)
-    // COLOR_0 accessor must exist (geometry is visible)
-    const colorAccessor = parsed.accessors?.find(
-      (a: any) =>
-        a.type === "VEC3" && a.bufferView !== parsed.accessors[0].bufferView,
-    )
-    expect(parsed.meshes).toBeDefined()
-    expect(parsed.meshes.length).toBeGreaterThan(0)
-    // Buffer must be non-empty (geometry rendered, not discarded)
-    expect(parsed.buffers[0].byteLength).toBeGreaterThan(100)
+    const colorData = getColorFloats(parsed)
+    // #fff should decode to exactly [1, 1, 1]
+    expect(colorData[0]).toBe(1)
+    expect(colorData[1]).toBe(1)
+    expect(colorData[2]).toBe(1)
   })
 
-  it("renders geometry with full hex color (#555555) correctly", async () => {
+  it("renders geometry with full hex color (#555555) on vertex correctly", async () => {
     const geom = jscadModeling.primitives.cuboid({ size: [1, 1, 1] })
-    ;(geom as any).color = "#555555"
+    if (geom.polygons) {
+      for (const poly of geom.polygons) {
+        for (const vertex of poly.vertices) {
+          ;(vertex as any).color = "#555555"
+        }
+      }
+    }
 
     const result = await convertJscadModelToGltf(
-      { geometries: [{ geom, color: "#555555" }] },
+      { geometries: [{ geom }] },
       { format: "gltf" },
     )
 
     const parsed = JSON.parse(result.data as string)
-    expect(parsed.meshes).toBeDefined()
-    expect(parsed.buffers[0].byteLength).toBeGreaterThan(100)
+    const colorData = getColorFloats(parsed)
+    const expectedVal = 0.3333333333333333
+    expect(colorData[0]).toBeCloseTo(expectedVal, 4)
+    expect(colorData[1]).toBeCloseTo(expectedVal, 4)
+    expect(colorData[2]).toBeCloseTo(expectedVal, 4)
   })
 
-  it("renders geometry with RGB array color ([1,1,1]) correctly", async () => {
+  it("renders geometry with RGB array color ([0.5, 0.5, 0.5]) correctly", async () => {
     const geom = jscadModeling.primitives.cuboid({ size: [1, 1, 1] })
-    ;(geom as any).color = [1, 1, 1]
+    if (geom.polygons) {
+      for (const poly of geom.polygons) {
+        for (const vertex of poly.vertices) {
+          ;(vertex as any).color = [0.5, 0.5, 0.5]
+        }
+      }
+    }
 
     const result = await convertJscadModelToGltf(
-      { geometries: [{ geom, color: [1, 1, 1] as [number, number, number] }] },
+      { geometries: [{ geom }] },
       { format: "gltf" },
     )
 
     const parsed = JSON.parse(result.data as string)
-    expect(parsed.meshes).toBeDefined()
-    expect(parsed.buffers[0].byteLength).toBeGreaterThan(100)
+    const colorData = getColorFloats(parsed)
+    expect(colorData[0]).toBe(0.5)
+    expect(colorData[1]).toBe(0.5)
+    expect(colorData[2]).toBe(0.5)
   })
 })
