@@ -90,3 +90,29 @@ describe("hex string color support", () => {
     expect(colorData[2]).toBe(0.5)
   })
 })
+
+import { renderGLTFToPNGFromGLB } from "poppygl"
+
+describe("hex string color visual snapshot", () => {
+  it("renders a red cube (#ff0000) correctly and matches snapshot", async () => {
+    const geom = jscadModeling.primitives.cuboid({ size: [10, 10, 10] })
+    if (geom.polygons) {
+      for (const poly of geom.polygons) {
+        for (const vertex of poly.vertices) {
+          ;(vertex as any).color = "#ff0000"
+        }
+      }
+    }
+
+    const glbResult = await convertJscadModelToGltf(
+      { geometries: [{ geom }] },
+      { format: "glb" },
+    )
+
+    expect(glbResult.format).toBe("glb")
+
+    expect(
+      renderGLTFToPNGFromGLB(glbResult.data as ArrayBuffer),
+    ).toMatchPngSnapshot(import.meta.path)
+  })
+})
