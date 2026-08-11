@@ -90,6 +90,10 @@ const toColorTuple = (value: unknown, fallback: ColorTuple): ColorTuple => {
       Number.isFinite(b) ? b : fallback[2],
     ]
   }
+  if (typeof value === "string") {
+    const parsed = parseColorValue(value)
+    if (parsed) return parsed
+  }
   return fallback
 }
 
