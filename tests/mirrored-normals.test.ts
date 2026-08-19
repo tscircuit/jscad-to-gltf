@@ -50,13 +50,13 @@ describe("mirrored geometry normals", () => {
     // 5. Inspect the triangles of the +X face (where all 3 vertices have X = +5)
     let foundPlusXTriangles = 0
     for (let i = 0; i < positions.length; i += 9) {
-      const v1x = positions[i]
-      const v2x = positions[i + 3]
-      const v3x = positions[i + 6]
+      const v1x = positions[i]!
+      const v2x = positions[i + 3]!
+      const v3x = positions[i + 6]!
 
-      const nx = normals[i]
-      const ny = normals[i + 1]
-      const nz = normals[i + 2]
+      const nx = normals[i]!
+      const ny = normals[i + 1]!
+      const nz = normals[i + 2]!
 
       if (
         Math.abs(v1x - 5) < 0.001 &&
