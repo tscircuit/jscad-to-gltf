@@ -307,6 +307,16 @@ const convertPolygonGeometry = (
     ? toColorTuple(csg.color, [1, 1, 1])
     : [1, 1, 1]
 
+  let isMirrored = false
+  if (Array.isArray(csg.transforms) && csg.transforms.length === 16) {
+    const m = csg.transforms
+    const det =
+      m[0]! * (m[5]! * m[10]! - m[6]! * m[9]!) -
+      m[1]! * (m[4]! * m[10]! - m[6]! * m[8]!) +
+      m[2]! * (m[4]! * m[9]! - m[5]! * m[8]!)
+    isMirrored = det < 0
+  }
+
   for (const polygon of csg.polygons) {
     if (!polygon?.vertices || polygon.vertices.length < 3) continue
 
@@ -321,9 +331,23 @@ const convertPolygonGeometry = (
     )
 
     for (let i = 1; i < transformedVertices.length - 1; i++) {
-      const a = transformedVertices[0]!
-      const b = transformedVertices[i]!
-      const c = transformedVertices[i + 1]!
+      let a = transformedVertices[0]!
+      let b = transformedVertices[i]!
+      let c = transformedVertices[i + 1]!
+
+      let colorA = vertexColors[0]!
+      let colorB = vertexColors[i]!
+      let colorC = vertexColors[i + 1]!
+
+      if (isMirrored) {
+        const tempV = b
+        b = c
+        c = tempV
+
+        const tempC = colorB
+        colorB = colorC
+        colorC = tempC
+      }
 
       const ab = subtract(b, a)
       const ac = subtract(c, a)
@@ -331,10 +355,6 @@ const convertPolygonGeometry = (
 
       positions.push(...a, ...b, ...c)
       normals.push(...normal, ...normal, ...normal)
-
-      const colorA = vertexColors[0]!
-      const colorB = vertexColors[i]!
-      const colorC = vertexColors[i + 1]!
       colors.push(...colorA, ...colorB, ...colorC)
     }
   }
