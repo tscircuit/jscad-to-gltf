@@ -110,9 +110,15 @@ describe("mirrored geometry normals", () => {
   test("mirror BEFORE union: reflected piece keeps correct outward normal after boolean op", async () => {
     // Cube A will be mirrored, then unioned with B — the ordering your
     // existing tests don't cover (both existing tests union first, mirror second).
-    const cubeA = jscad.primitives.cuboid({ size: [4, 4, 4], center: [-8, 0, 0] }) // spans x:[-10,-6]
-    const mirroredA = jscad.transforms.mirror({ normal: [1, 0, 0] }, cubeA)        // spans x:[6,10]
-    const cubeB = jscad.primitives.cuboid({ size: [4, 4, 4], center: [0, 0, 0] })  // spans x:[-2,2], disjoint
+    const cubeA = jscad.primitives.cuboid({
+      size: [4, 4, 4],
+      center: [-8, 0, 0],
+    }) // spans x:[-10,-6]
+    const mirroredA = jscad.transforms.mirror({ normal: [1, 0, 0] }, cubeA) // spans x:[6,10]
+    const cubeB = jscad.primitives.cuboid({
+      size: [4, 4, 4],
+      center: [0, 0, 0],
+    }) // spans x:[-2,2], disjoint
     const unionModel = jscad.booleans.union(mirroredA, cubeB)
 
     const { data } = await convertJscadModelToGltf(
@@ -120,20 +126,31 @@ describe("mirrored geometry normals", () => {
       { format: "gltf", prettyJson: true },
     )
     const gltf = JSON.parse(data as string)
-    const base64Data = gltf.buffers[0].uri.replace("data:application/octet-stream;base64,", "")
+    const base64Data = gltf.buffers[0].uri.replace(
+      "data:application/octet-stream;base64,",
+      "",
+    )
     const buffer = Buffer.from(base64Data, "base64")
     const primitive = gltf.meshes[0].primitives[0]
     const posAcc = gltf.accessors[primitive.attributes.POSITION]
     const normAcc = gltf.accessors[primitive.attributes.NORMAL]
-    const positions = new Float32Array(buffer.buffer, buffer.byteOffset + gltf.bufferViews[posAcc.bufferView].byteOffset, posAcc.count * 3)
-    const normals = new Float32Array(buffer.buffer, buffer.byteOffset + gltf.bufferViews[normAcc.bufferView].byteOffset, normAcc.count * 3)
+    const positions = new Float32Array(
+      buffer.buffer,
+      buffer.byteOffset + gltf.bufferViews[posAcc.bufferView].byteOffset,
+      posAcc.count * 3,
+    )
+    const normals = new Float32Array(
+      buffer.buffer,
+      buffer.byteOffset + gltf.bufferViews[normAcc.bufferView].byteOffset,
+      normAcc.count * 3,
+    )
 
     // The face at x=10 is mirroredA's original -X face — after union, its
     // outward normal MUST still be [+1,0,0]. If the union baked the mirror
     // without correcting winding, this comes back [-1,0,0] instead.
     let checked = 0
     for (let i = 0; i < positions.length; i += 9) {
-      if ([0, 3, 6].every(o => Math.abs(positions[i + o]! - 10) < 0.001)) {
+      if ([0, 3, 6].every((o) => Math.abs(positions[i + o]! - 10) < 0.001)) {
         checked++
         expect(normals[i]!).toBeCloseTo(1, 2)
         expect(normals[i + 1]!).toBeCloseTo(0, 2)
@@ -145,13 +162,25 @@ describe("mirrored geometry normals", () => {
 
   test("visual 3D snapshot side-by-side: unmirrored reference vs mirrored geometry", async () => {
     // Original unmirrored L-shape on the left (blue)
-    const baseLeft = jscad.primitives.cuboid({ size: [10, 4, 2], center: [-7, 0, 1] })
-    const postLeft = jscad.primitives.cuboid({ size: [2, 4, 8], center: [-11, 0, 4] })
+    const baseLeft = jscad.primitives.cuboid({
+      size: [10, 4, 2],
+      center: [-7, 0, 1],
+    })
+    const postLeft = jscad.primitives.cuboid({
+      size: [2, 4, 8],
+      center: [-11, 0, 4],
+    })
     const originalLeft = jscad.booleans.union(baseLeft, postLeft)
 
     // Mirrored L-shape on the right (red)
-    const base = jscad.primitives.cuboid({ size: [10, 4, 2], center: [0, 0, 1] })
-    const post = jscad.primitives.cuboid({ size: [2, 4, 8], center: [-4, 0, 4] })
+    const base = jscad.primitives.cuboid({
+      size: [10, 4, 2],
+      center: [0, 0, 1],
+    })
+    const post = jscad.primitives.cuboid({
+      size: [2, 4, 8],
+      center: [-4, 0, 4],
+    })
     const unionModel = jscad.booleans.union(base, post)
     const mirroredRight = jscad.transforms.translate(
       [7, 0, 0],
