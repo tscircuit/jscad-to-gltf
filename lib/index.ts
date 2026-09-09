@@ -415,12 +415,18 @@ const collectGeometries = (
     )
   }
 
-  if (csg?.polygons) {
+  if (csg?.polygons?.length) {
     return [convertPolygonGeometry(csg, name, axisTransform)]
   }
 
-  if (csg?.sides) {
+  if (csg?.sides?.length) {
     return [convertSideGeometry(csg, name, axisTransform)]
+  }
+
+  // Empty geom2/geom3 (boolean subtract that removed everything) is not an
+  // error when other siblings still have faces.
+  if (csg?.polygons || csg?.sides) {
+    return []
   }
 
   throw new Error(
