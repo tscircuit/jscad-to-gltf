@@ -1,5 +1,5 @@
 import jscad from "@jscad/modeling"
-import type { JscadOperation } from "jscad-planner"
+import type { JscadOperation, MaterialOptions } from "jscad-planner"
 import { executeJscadOperations } from "jscad-planner"
 import { Buffer } from "node:buffer"
 
@@ -27,6 +27,7 @@ type ColorTuple = [number, number, number]
 type Vec3 = [number, number, number]
 
 interface CsgLike {
+  material?: MaterialOptions
   polygons?: Array<{ vertices: any[] }>
   sides?: any[]
   color?: unknown
@@ -34,6 +35,7 @@ interface CsgLike {
 }
 
 interface GeometryData {
+  material?: MaterialOptions
   name: string
   positions: Float32Array
   normals?: Float32Array
@@ -42,6 +44,7 @@ interface GeometryData {
 }
 
 export interface JscadRenderedGeometry {
+  material?: MaterialOptions
   geom: CsgLike
   color?: unknown
 }
@@ -348,6 +351,7 @@ const convertPolygonGeometry = (
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
     colors: colors.length ? new Float32Array(colors) : undefined,
+    material: csg.material,
     mode: GLTF_MODE_TRIANGLES,
   }
 }
@@ -400,6 +404,7 @@ const convertSideGeometry = (
     name,
     positions: new Float32Array(positions),
     colors: colors.length ? new Float32Array(colors) : undefined,
+    material: csg.material,
     mode: GLTF_MODE_LINES,
   }
 }
@@ -490,12 +495,55 @@ const computeMinMax = (
   return { min, max }
 }
 
+const materialColor = (
+  value: MaterialOptions["color"],
+  fallback: ColorTuple,
+): ColorTuple => {
+  if (value === undefined) return fallback
+  if (Array.isArray(value)) return [...value]
+  const rgb =
+    typeof value === "number"
+      ? [
+          ((value >> 16) & 255) / 255,
+          ((value >> 8) & 255) / 255,
+          (value & 255) / 255,
+        ]
+      : (parseColorValue(value) ?? jscad.colors.colorNameToRgb(value))
+  if (!rgb) throw new Error(`Unsupported material color: ${value}`)
+  return rgb.map((channel) =>
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  ) as ColorTuple
+}
+
+const toGltfMaterial = (material: MaterialOptions) => {
+  const opacity = material.opacity ?? 1
+  const transparent = material.transparent ?? opacity < 1
+  const strength = material.emissiveIntensity ?? 1
+  return {
+    pbrMetallicRoughness: {
+      baseColorFactor: [...materialColor(material.color, [1, 1, 1]), opacity],
+      metallicFactor: material.metalness ?? 0,
+      roughnessFactor: material.roughness ?? 0.65,
+    },
+    emissiveFactor: materialColor(material.emissive, [0, 0, 0]),
+    alphaMode: transparent ? "BLEND" : "OPAQUE",
+    ...(strength !== 1
+      ? {
+          extensions: {
+            KHR_materials_emissive_strength: { emissiveStrength: strength },
+          },
+        }
+      : {}),
+  }
+}
+
 const buildGltfCore = (geometries: GeometryData[]) => {
   const bufferChunks: Buffer[] = []
   const bufferViews: BufferView[] = []
   const accessors: Accessor[] = []
   const meshes: Array<{ name: string; primitives: any[] }> = []
   const nodes: Array<{ name: string; mesh: number }> = []
+  const materials: ReturnType<typeof toGltfMaterial>[] = []
   let bufferLength = 0
 
   geometries.forEach((geometry, index) => {
@@ -540,7 +588,7 @@ const buildGltfCore = (geometries: GeometryData[]) => {
       primitiveAttributes.NORMAL = normalAccessorIndex
     }
 
-    if (geometry.colors) {
+    if (geometry.colors && geometry.material?.color === undefined) {
       const colorResult = addBufferView(
         bufferChunks,
         bufferViews,
@@ -565,6 +613,11 @@ const buildGltfCore = (geometries: GeometryData[]) => {
         {
           attributes: primitiveAttributes,
           mode: geometry.mode,
+          ...(geometry.material
+            ? {
+                material: materials.push(toGltfMaterial(geometry.material)) - 1,
+              }
+            : {}),
         },
       ],
     })
@@ -589,6 +642,10 @@ const buildGltfCore = (geometries: GeometryData[]) => {
     bufferViews,
     accessors,
     meshes,
+    ...(materials.length ? { materials } : {}),
+    ...(materials.some((material) => material.extensions)
+      ? { extensionsUsed: ["KHR_materials_emissive_strength"] }
+      : {}),
     nodes: nodes.map((node, idx) => ({ ...node, mesh: idx })),
     scenes: [{ name: "Scene", nodes: nodes.map((_, idx) => idx) }],
     scene: 0,
@@ -687,7 +744,10 @@ const normalizeRenderedGeometries = (model: JscadRenderedModel): CsgLike[] => {
   const prepared: CsgLike[] = []
   for (const entry of model.geometries) {
     if (!entry?.geom) continue
-    prepared.push(ensureColorTupleOnCsg(entry.geom, entry.color))
+    prepared.push({
+      ...ensureColorTupleOnCsg(entry.geom, entry.color),
+      material: entry.material ?? entry.geom.material,
+    })
   }
   return prepared
 }

@@ -17,14 +17,14 @@
   "type": "module",
   "dependencies": {
     "@jscad/modeling": "^2.12.6",
-    "jscad-planner": "^0.0.13"
+    "jscad-planner": "^0.0.19"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
     "@types/bun": "latest",
     "jscad-electronics": "^0.0.137",
     "looks-same": "^10.0.1",
-    "poppygl": "^0.0.24",
+    "poppygl": "^0.0.33",
     "tsup": "^8.5.0"
   },
   "peerDependencies": {
