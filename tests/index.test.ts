@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test"
 
-import { convertJscadPlanToGltf, type JscadOperation } from "../lib/index"
+import {
+  convertJscadModelToGltf,
+  convertJscadPlanToGltf,
+  type JscadOperation,
+} from "../lib/index"
 
 const cubePlan: JscadOperation = {
   type: "cuboid",
@@ -44,5 +48,36 @@ describe("convertJscadPlanToGltf", () => {
     await expect(convertJscadPlanToGltf(volumePlan)).rejects.toThrow(
       /did not return a supported geometry/i,
     )
+  })
+})
+
+const triangleGeom = {
+  polygons: [
+    {
+      vertices: [
+        [0, 0, 0],
+        [1, 0, 0],
+        [0, 1, 0],
+      ],
+    },
+  ],
+}
+
+describe("convertJscadModelToGltf", () => {
+  it("skips empty geom3 siblings instead of throwing", async () => {
+    const result = await convertJscadModelToGltf({
+      geometries: [{ geom: { polygons: [] } }, { geom: triangleGeom }],
+    })
+
+    expect(result.format).toBe("glb")
+    expect(result.byteLength).toBeGreaterThan(0)
+  })
+
+  it("still throws when every geom3 is empty", async () => {
+    await expect(
+      convertJscadModelToGltf({
+        geometries: [{ geom: { polygons: [] } }],
+      }),
+    ).rejects.toThrow(/no geometry/i)
   })
 })
