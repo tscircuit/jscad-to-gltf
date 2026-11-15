@@ -22,7 +22,7 @@ import { convertJscadModelToGltf } from "jscad-to-gltf"
 
 const model = jscad.csg.union(
   jscad.csg.cube({ size: [5, 5, 5] }),
-  jscad.csg.cube({ size: [5, 5, 5] }).translate([10, 0, 0])
+  jscad.csg.cube({ size: [5, 5, 5] }).translate([10, 0, 0]),
 )
 
 const result = await convertJscadModelToGltf(model, {
