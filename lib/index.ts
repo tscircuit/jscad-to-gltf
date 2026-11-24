@@ -30,6 +30,8 @@ interface CsgLike {
   material?: MaterialOptions
   polygons?: Array<{ vertices: any[] }>
   sides?: any[]
+  points?: any[]
+  isClosed?: boolean
   color?: unknown
   transforms?: number[]
 }
@@ -409,6 +411,52 @@ const convertSideGeometry = (
   }
 }
 
+const convertPathGeometry = (
+  csg: CsgLike,
+  name: string,
+  axisTransform: AxisTransform = "none",
+): GeometryData => {
+  if (!csg.points || csg.points.length < 2) {
+    throw new Error("Expected point data in JSCAD path geometry")
+  }
+
+  const positions: number[] = []
+  const colors: number[] = []
+  const defaultColor: ColorTuple = csg.color
+    ? toColorTuple(csg.color, [1, 1, 1])
+    : [1, 1, 1]
+
+  const transformedPoints = csg.points.map((point) => {
+    const transformed = applyTransform(
+      [
+        Number(point?.[0]) || 0,
+        Number(point?.[1]) || 0,
+        Number(point?.[2]) || 0,
+      ],
+      csg.transforms,
+    )
+    return applyAxisTransform(transformed, axisTransform)
+  })
+
+  const segmentCount = csg.isClosed
+    ? transformedPoints.length
+    : transformedPoints.length - 1
+  for (let index = 0; index < segmentCount; index++) {
+    const start = transformedPoints[index]!
+    const end = transformedPoints[(index + 1) % transformedPoints.length]!
+    positions.push(...start, ...end)
+    colors.push(...defaultColor, ...defaultColor)
+  }
+
+  return {
+    name,
+    positions: new Float32Array(positions),
+    colors: colors.length ? new Float32Array(colors) : undefined,
+    material: csg.material,
+    mode: GLTF_MODE_LINES,
+  }
+}
+
 const collectGeometries = (
   csg: CsgLike | CsgLike[],
   name: string,
@@ -428,8 +476,12 @@ const collectGeometries = (
     return [convertSideGeometry(csg, name, axisTransform)]
   }
 
+  if (csg?.points) {
+    return [convertPathGeometry(csg, name, axisTransform)]
+  }
+
   throw new Error(
-    "JSCAD plan evaluation did not return a supported geometry (expected geom2 or geom3)",
+    "JSCAD plan evaluation did not return a supported geometry (expected geom2, geom3, or path2)",
   )
 }
 
